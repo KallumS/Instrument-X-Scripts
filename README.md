@@ -48,6 +48,44 @@ For a slower, wider opera-style swell try `RAMP_TAU = 1.0`, `MAX_DEPTH_CENTS =
 80`, `RATE_HZ = 5.0`. For a tighter pop delivery, `ONSET_DELAY = 0.15`,
 `RAMP_TAU = 0.3`, `MAX_DEPTH_CENTS = 35`.
 
+### FadingVibrato.lua — *Pitch → Fading Vibrato*
+
+The mirror of Swelling Vibrato. Starts at full width and narrows as the note is
+held, settling into a straight tone — the way a singer lets vibrato die away at
+the end of a phrase.
+
+```
+depth(t) = MAX_DEPTH_CENTS * (1 - (1 - exp(-t / FADE_TAU)) ^ CURVE)
+```
+
+That is the swelling script's envelope subtracted from one, so the two are exact
+counterparts and `CURVE` means the same thing in both.
+
+Once the vibrato narrows past `STRAIGHT_THRESHOLD` it snaps to zero and the rest
+of the note is written flat. Without that, an exponential decay never quite
+reaches zero and the tail fills with a sub-cent wobble nobody can hear — at the
+default a 3-second note goes genuinely straight for its last 0.85s, drawn with
+two points rather than forty.
+
+`ONSET_DELAY` defaults to `0.0` here, since "starts wavy" means from the first
+moment. Everything else matches its sibling, except `RATE_DECAY` in place of
+`RATE_GROWTH`: below 1.0 the vibrato slows as it narrows, which sounds more like
+the singer relaxing than stopping.
+
+| Constant | Default | What it does |
+| --- | --- | --- |
+| `ONSET_DELAY` | `0.0` | Seconds before the vibrato starts |
+| `FADE_TAU` | `0.55` | Fade time constant; ~a third of full width after this long, essentially straight after 3x |
+| `CURVE` | `1.4` | Higher holds the vibrato open longer before it collapses |
+| `MAX_DEPTH_CENTS` | `55` | Starting deviation either side of the note |
+| `RATE_HZ` | `5.5` | Vibrato speed at full width |
+| `RATE_DECAY` | `1.0` | Speed once faded, as a multiple of `RATE_HZ`; below 1.0 slows as it narrows |
+| `STRAIGHT_THRESHOLD` | `1.5` | Depth in cents below which the rest is written flat |
+| `RELEASE` | `0.08` | Seconds of fade-out for notes that end before the vibrato has |
+| `SAMPLES_PER_CYCLE` | `12` | Points drawn per vibrato cycle |
+| `DISABLE_BUILTIN_VIBRATO` | `true` | Zero the note's own vibrato depth |
+
+
 ### CurvedCrescendo.lua — *Dynamics → Curved Crescendo*
 
 Ramps the Loudness parameter from a low value up to a high one along a power
@@ -83,11 +121,40 @@ downstream. Re-running clears the range first, so it replaces rather than layers
 | `POINTS_PER_SECOND` | `24` | Automation points drawn per second |
 | `PARAMETER` | `"loudness"` | Which lane to ramp |
 
-For a steeper late build use `CURVE = 3.0`. For a *decrescendo*, swap the two
-values (`START_VALUE = 6.0`, `END_VALUE = -6.0`) — the curve still eases in the
-same direction, so pair it with `CURVE = 0.5` for a natural fall. Pointing
-`PARAMETER` at `"tension"` or `"breathiness"` ramps those lanes instead, and the
-range clamp adapts automatically.
+For a steeper late build use `CURVE = 3.0`. For a falling ramp use
+`CurvedDecrescendo.lua` below, which reflects this curve in time rather than
+just swapping the endpoints. Pointing `PARAMETER` at `"tension"` or
+`"breathiness"` ramps those lanes instead, and the range clamp adapts
+automatically.
+
+### CurvedDecrescendo.lua — *Dynamics → Curved Decrescendo*
+
+The mirror of Curved Crescendo, ramping Loudness from high down to low:
+
+```
+value(x) = START_VALUE + (END_VALUE - START_VALUE) * (1 - (1 - x) ^ CURVE)
+```
+
+The curve is the crescendo's reflected in time — verified point for point — so
+it drops away quickly at first and then eases into the quiet, which is how a
+sound left to decay actually behaves:
+
+| through | crescendo | decrescendo |
+| --- | --- | --- |
+| 0% | −6.00 dB | +6.00 dB |
+| 25% | −5.25 dB | +0.75 dB |
+| 50% | −3.00 dB | −3.00 dB |
+| 75% | +0.75 dB | −5.25 dB |
+| 100% | +6.00 dB | −6.00 dB |
+
+Set `CURVE` below 1.0 for the other kind of diminuendo, one that holds its
+volume and drops late — at `0.5` it is still at +4.4 dB a quarter of the way
+through, where the default has already fallen to +0.75 dB.
+
+Constants are the same as Curved Crescendo's, with `START_VALUE` and `END_VALUE`
+swapped to `6.0` and `-6.0`. The ramp machinery is byte-identical to its
+sibling's; only the curve and the defaults differ.
+
 
 ### RemoveOverlaps.lua — *Notes → Remove Overlaps*
 
