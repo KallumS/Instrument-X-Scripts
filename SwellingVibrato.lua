@@ -104,9 +104,16 @@ local function vibratoOnNote(note, pitchDelta, timeAxis, groupOffset)
   -- Re-running the script on the same note should replace, not layer.
   pitchDelta:remove(onsetBlick, endBlick)
 
+  -- Rounding to whole blicks can land two samples on the same position; keep
+  -- the automation strictly ordered by dropping any that doesn't advance.
+  local lastBlick = nil
   local function addPoint(seconds, cents)
-    local blick = timeAxis:getBlickFromSeconds(seconds) - groupOffset
-    pitchDelta:add(math.floor(blick + 0.5), cents)
+    local blick = math.floor(timeAxis:getBlickFromSeconds(seconds) - groupOffset + 0.5)
+    if lastBlick and blick <= lastBlick then
+      return
+    end
+    lastBlick = blick
+    pitchDelta:add(blick, cents)
   end
 
   -- Anchor the straight section so earlier pitch edits don't bleed in.
