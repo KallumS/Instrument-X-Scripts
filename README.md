@@ -88,3 +88,28 @@ values (`START_VALUE = 6.0`, `END_VALUE = -6.0`) — the curve still eases in th
 same direction, so pair it with `CURVE = 0.5` for a natural fall. Pointing
 `PARAMETER` at `"tension"` or `"breathiness"` ramps those lanes instead, and the
 range clamp adapts automatically.
+
+### RemoveOverlaps.lua — *Notes → Remove Overlaps*
+
+Makes the selected notes monophonic. Where a note runs past the start of the
+next one, the earlier note is shortened to stop where the later one begins.
+
+**Onsets are never moved.** Onsets carry the rhythm, so shortening the note that
+overstayed keeps the performance intact — pushing the later note back instead
+would drag everything after it out of time.
+
+Only the selected notes are considered, so a phrase can be cleaned up without
+disturbing the notes around it.
+
+Notes sharing an onset are a special case: trimming the earlier one would leave
+nothing of it, so it counts as swallowed whole and is deleted. Where two notes
+share an onset the **longer one survives**. This is the only case where the
+script deletes rather than shortens, and the summary always says how many went.
+Set `REMOVE_ENGULFED = false` to keep them and have them reported as unresolved
+instead — at the cost of the selection not being fully overlap-free afterwards.
+
+| Constant | Default | What it does |
+| --- | --- | --- |
+| `GAP` | `0.0` | Seconds of silence left between notes; above 0 forces re-articulation |
+| `MIN_DURATION` | `0.01` | Below this, a trimmed note counts as swallowed whole rather than overlapping |
+| `REMOVE_ENGULFED` | `true` | Delete swallowed notes (`false` keeps and reports them) |
